@@ -68,13 +68,22 @@ install_linux_deps() {
     case $pkg_manager in
         "apt")
             sudo apt update
-            sudo apt install -y git ripgrep cmake ninja-build gettext curl unzip build-essential
+            sudo apt install -y git ripgrep cmake ninja-build gettext curl unzip build-essential fzf fd-find
             ;;
         "yum"|"dnf")
             sudo $pkg_manager update -y
-            sudo $pkg_manager install -y git ripgrep cmake ninja-build gettext curl unzip gcc gcc-c++ make
+            sudo $pkg_manager install -y git ripgrep cmake ninja-build gettext curl unzip gcc gcc-c++ make fzf fd-find
             ;;
     esac
+    
+    # 安装 lazygit
+    log_info "正在安装 lazygit..."
+    cd /tmp
+    wget -O lazygit.tar.gz https://github.com/jesseduffield/lazygit/releases/download/v0.42.0/lazygit_0.42.0_Linux_x86_64.tar.gz
+    tar -xzf lazygit.tar.gz
+    sudo mv lazygit /usr/local/bin/
+    rm lazygit.tar.gz
+    cd - > /dev/null
     
     log_success "基础依赖安装完成"
 }
@@ -241,8 +250,8 @@ main() {
 
 # 检查是否以 root 用户运行
 if [[ $EUID -eq 0 ]]; then
-    log_error "请不要以 root 用户运行此脚本"
-    exit 1
+    log_warning "检测到以 root 用户运行，请确保了解相关风险"
+    # 继续执行，不退出
 fi
 
 # 运行主函数
