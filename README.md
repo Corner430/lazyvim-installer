@@ -4,6 +4,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue.svg)](https://github.com/LazyVim/starter)
+[![GitHub stars](https://img.shields.io/github/stars/corner430/lazyvim-installer.svg?style=social&label=Star)](https://github.com/corner430/lazyvim-installer)
+[![GitHub forks](https://img.shields.io/github/forks/corner430/lazyvim-installer.svg?style=social&label=Fork)](https://github.com/corner430/lazyvim-installer)
 
 ## 📖 项目简介
 
@@ -29,7 +31,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-username/lazyvim-installer.git
+git clone https://github.com/corner430/lazyvim-installer.git
 cd lazyvim-installer
 
 # 给脚本执行权限
@@ -65,7 +67,10 @@ lazyvim-installer/
 ├── README.md                           # 项目说明文档
 ├── install-lazyvim.sh                  # 自动安装脚本
 ├── check-system.sh                     # 系统检查脚本
-└── LazyVim-Installation-Guide.md      # 详细安装指南
+├── LazyVim-Installation-Guide.md      # 详细安装指南
+├── CHANGELOG.md                        # 版本更新日志
+├── LICENSE                             # MIT 许可证
+└── .gitignore                          # Git 忽略文件
 ```
 
 ## 🔧 脚本说明
@@ -110,6 +115,62 @@ lazyvim-installer/
   "editor.fontFamily": "CaskaydiaCove Nerd Font Mono"
 }
 ```
+
+## ⌨️ 常用快捷键
+
+| 快捷键 | 功能 |
+|--------|------|
+| `<Space> + f + f` | 文件查找 |
+| `<Space> + f + g` | 文本搜索 |
+| `<Space> + e` | 文件浏览器 |
+| `<Space> + h` | 帮助菜单 |
+| `<Space> + w` | 保存文件 |
+| `<Space> + q` | 退出 |
+
+## 🆘 故障排除
+
+### 常见问题
+
+**1. Neovim 版本过低**
+```bash
+# 检查版本
+nvim --version
+
+# 重新安装
+./install-lazyvim.sh
+```
+
+**2. 字体显示异常**
+```bash
+# 检查字体安装
+fc-list | grep -i "caskaydia"
+
+# 重新安装字体
+./install-lazyvim.sh
+```
+
+**3. 插件安装失败**
+```bash
+# 清理缓存后重新安装
+rm -rf ~/.local/share/nvim ~/.cache/nvim
+nvim --headless -c "Lazy! sync" -c "qa"
+```
+
+### 获取帮助
+
+- 📖 查看详细指南：[LazyVim-Installation-Guide.md](./LazyVim-Installation-Guide.md)
+- 🔍 运行系统检查：`./check-system.sh`
+- 💬 提交 Issue：[GitHub Issues](https://github.com/corner430/lazyvim-installer/issues)
+
+## 🤝 贡献
+
+欢迎贡献代码和文档！
+
+1. Fork 本项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request
 
 ## 📄 许可证
 
