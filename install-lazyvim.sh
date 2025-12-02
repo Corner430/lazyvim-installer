@@ -59,31 +59,113 @@ detect_package_manager() {
     fi
 }
 
+# 检查是否需要 sudo
+need_sudo() {
+    if [[ $EUID -eq 0 ]]; then
+        echo ""
+    else
+        echo "sudo"
+    fi
+}
+
+# 安装 ripgrep
+install_ripgrep() {
+    if command -v rg &> /dev/null; then
+        log_success "ripgrep 已安装"
+        return 0
+    fi
+    
+    local SUDO=$(need_sudo)
+    log_info "正在安装 ripgrep..."
+    
+    cd /tmp
+    wget -O ripgrep.tar.gz https://github.com/BurntSushi/ripgrep/releases/download/14.1.0/ripgrep-14.1.0-x86_64-unknown-linux-musl.tar.gz
+    tar -xzf ripgrep.tar.gz
+    $SUDO cp ripgrep-14.1.0-x86_64-unknown-linux-musl/rg /usr/local/bin/
+    rm -rf ripgrep.tar.gz ripgrep-14.1.0-x86_64-unknown-linux-musl
+    cd - > /dev/null
+    
+    log_success "ripgrep 安装完成"
+}
+
+# 安装 fzf
+install_fzf() {
+    if command -v fzf &> /dev/null; then
+        log_success "fzf 已安装"
+        return 0
+    fi
+    
+    log_info "正在安装 fzf..."
+    
+    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+    ~/.fzf/install --bin
+    
+    local SUDO=$(need_sudo)
+    $SUDO cp ~/.fzf/bin/fzf /usr/local/bin/
+    
+    log_success "fzf 安装完成"
+}
+
+# 安装 fd
+install_fd() {
+    if command -v fd &> /dev/null; then
+        log_success "fd 已安装"
+        return 0
+    fi
+    
+    local SUDO=$(need_sudo)
+    log_info "正在安装 fd..."
+    
+    cd /tmp
+    wget -O fd.tar.gz https://github.com/sharkdp/fd/releases/download/v9.0.0/fd-v9.0.0-x86_64-unknown-linux-musl.tar.gz
+    tar -xzf fd.tar.gz
+    $SUDO cp fd-v9.0.0-x86_64-unknown-linux-musl/fd /usr/local/bin/
+    rm -rf fd.tar.gz fd-v9.0.0-x86_64-unknown-linux-musl
+    cd - > /dev/null
+    
+    log_success "fd 安装完成"
+}
+
 # 安装基础依赖 (Linux)
 install_linux_deps() {
     local pkg_manager=$1
+    local SUDO=$(need_sudo)
     
     log_info "正在安装基础依赖..."
     
     case $pkg_manager in
         "apt")
-            sudo apt update
-            sudo apt install -y git ripgrep cmake ninja-build gettext curl unzip build-essential fzf fd-find
+            $SUDO apt update
+            $SUDO apt install -y git cmake ninja-build gettext curl unzip build-essential wget
+            # 尝试安装，如果失败则从源码安装
+            $SUDO apt install -y ripgrep fzf fd-find || true
             ;;
         "yum"|"dnf")
-            sudo $pkg_manager update -y
-            sudo $pkg_manager install -y git ripgrep cmake ninja-build gettext curl unzip gcc gcc-c++ make fzf fd-find
+            $SUDO $pkg_manager update -y
+            $SUDO $pkg_manager install -y git cmake ninja-build gettext curl unzip gcc gcc-c++ make wget tar gzip fontconfig
+            # 尝试安装，如果失败则从源码安装
+            $SUDO $pkg_manager install -y ripgrep fzf fd-find 2>/dev/null || true
             ;;
     esac
     
+    # 安装可能缺失的工具
+    install_ripgrep
+    install_fzf
+    install_fd
+    
     # 安装 lazygit
     log_info "正在安装 lazygit..."
-    cd /tmp
-    wget -O lazygit.tar.gz https://github.com/jesseduffield/lazygit/releases/download/v0.42.0/lazygit_0.42.0_Linux_x86_64.tar.gz
-    tar -xzf lazygit.tar.gz
-    sudo mv lazygit /usr/local/bin/
-    rm lazygit.tar.gz
-    cd - > /dev/null
+    if ! command -v lazygit &> /dev/null; then
+        cd /tmp
+        wget -O lazygit.tar.gz https://github.com/jesseduffield/lazygit/releases/download/v0.42.0/lazygit_0.42.0_Linux_x86_64.tar.gz
+        tar -xzf lazygit.tar.gz
+        $SUDO mv lazygit /usr/local/bin/
+        rm lazygit.tar.gz
+        cd - > /dev/null
+        log_success "lazygit 安装完成"
+    else
+        log_success "lazygit 已安装"
+    fi
     
     log_success "基础依赖安装完成"
 }
@@ -112,6 +194,8 @@ install_macos_deps() {
 
 # 编译安装 Neovim (Linux)
 install_neovim_linux() {
+    local SUDO=$(need_sudo)
+    
     log_info "正在编译安装 Neovim..."
     
     # 检查是否已经安装了足够新的版本
@@ -132,7 +216,7 @@ install_neovim_linux() {
     cd neovim
     
     make CMAKE_BUILD_TYPE=RelWithDebInfo
-    sudo make install
+    $SUDO make install
     
     cd ..
     rm -rf neovim
@@ -151,7 +235,12 @@ install_nerd_font_linux() {
     unzip -o CascadiaCode.zip -d ~/.local/share/fonts/
     rm CascadiaCode.zip
     
-    fc-cache -fv
+    # 刷新字体缓存（如果 fc-cache 可用）
+    if command -v fc-cache &> /dev/null; then
+        fc-cache -fv
+    else
+        log_warning "fc-cache 不可用，字体可能需要重启终端后才能生效"
+    fi
     
     log_success "Nerd Font 安装完成"
 }
@@ -248,10 +337,9 @@ main() {
     show_completion_info
 }
 
-# 检查是否以 root 用户运行
+# 检查运行用户
 if [[ $EUID -eq 0 ]]; then
-    log_warning "检测到以 root 用户运行，请确保了解相关风险"
-    # 继续执行，不退出
+    log_info "检测到以 root 用户运行"
 fi
 
 # 运行主函数
