@@ -361,7 +361,7 @@ LUAEOF
     log_success "Lazy Extras 插件配置完成"
 }
 
-# 配置 OSC52 剪贴板（SSH 环境）
+# 配置 OSC52 剪贴板（SSH/tmux 环境）
 configure_clipboard() {
     if [[ -z "$SSH_CLIENT" && -z "$SSH_TTY" ]]; then
         log_info "非 SSH 环境，跳过 OSC52 剪贴板配置"
@@ -377,32 +377,61 @@ return {
   {
     "ojroques/nvim-osc52",
     config = function()
-      require("osc52").setup({
+      local osc52 = require("osc52")
+      osc52.setup({
         max_length = 0,
         silent = true,
         trim = false,
       })
 
-      local function copy()
-        if vim.v.event.operator == "y" and vim.v.event.regname == "" then
-          require("osc52").copy_register("")
+      -- 自定义 OSC52 发送：通过 tmux client tty 直接写入
+      -- nvim 的 stderr 在 tmux 中不连接终端 pty，需要绕过
+      local function send_osc52(text)
+        local b64 = require("osc52.base64").enc(text)
+        local seq = string.format("\027]52;c;%s\007", b64)
+
+        if os.getenv("TMUX") then
+          local handle = io.popen("tmux list-clients -F '#{client_tty}' 2>/dev/null")
+          if handle then
+            local ttys = handle:read("*a")
+            handle:close()
+            for tty in ttys:gmatch("[^\n]+") do
+              local f = io.open(tty, "w")
+              if f then
+                f:write(seq)
+                f:close()
+                return
+              end
+            end
+          end
         end
+
+        -- fallback: 非 tmux 环境使用插件默认方式
+        osc52.copy(text)
       end
 
       vim.api.nvim_create_autocmd("TextYankPost", {
-        callback = copy,
+        callback = function()
+          if vim.v.event.operator == "y" then
+            local reg = vim.v.event.regname
+            local text = vim.fn.getreg(reg)
+            if text and #text > 0 then
+              send_osc52(text)
+            end
+          end
+        end,
       })
     end,
   },
 }
 LUAEOF
 
-    # SSH 环境不使用系统剪贴板 provider，由 OSC52 插件处理
+    # 启用系统剪贴板集成
     local options_file="$HOME/.config/nvim/lua/config/options.lua"
     if ! grep -q "vim.opt.clipboard" "$options_file" 2>/dev/null; then
         echo "" >> "$options_file"
-        echo '-- SSH 环境不使用系统剪贴板 provider，由 nvim-osc52 插件处理' >> "$options_file"
-        echo 'vim.opt.clipboard = ""' >> "$options_file"
+        echo '-- 系统剪贴板集成（OSC52 通过 TextYankPost 同步到终端剪贴板）' >> "$options_file"
+        echo 'vim.opt.clipboard = "unnamedplus"' >> "$options_file"
     fi
 
     log_success "OSC52 剪贴板配置完成"
