@@ -3,6 +3,7 @@
 # LazyVim 系统检查脚本
 # 用于验证所有依赖是否正确安装
 # 支持 Linux 和 macOS 系统
+# 版本: 2.0.0
 
 set -e
 
@@ -40,7 +41,7 @@ check_version() {
     local cmd="$1"
     local min_version="$2"
     local version_cmd="$3"
-    
+
     if command_exists "$cmd"; then
         local version
         if [[ -n "$version_cmd" ]]; then
@@ -48,7 +49,7 @@ check_version() {
         else
             version=$($cmd --version 2>/dev/null | head -n1)
         fi
-        
+
         echo "$version"
         return 0
     else
@@ -60,25 +61,23 @@ check_version() {
 version_gte() {
     local version="$1"
     local min_version="$2"
-    
+
     if [[ "$version" == "$min_version" ]]; then
         return 0
     fi
-    
+
     # 提取版本号中的数字部分
     local version_clean=$(echo "$version" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
     local min_version_clean=$(echo "$min_version" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
-    
+
     if [[ -z "$version_clean" || -z "$min_version_clean" ]]; then
-        # 如果无法解析版本号，返回成功（假设已安装）
         return 0
     fi
-    
-    # 简单的版本比较 (适用于大多数情况)
+
     local IFS='.'
     read -ra V1 <<< "$version_clean"
     read -ra V2 <<< "$min_version_clean"
-    
+
     for i in "${!V1[@]}"; do
         if [[ -z "${V2[$i]}" ]]; then
             return 0
@@ -89,7 +88,7 @@ version_gte() {
             return 1
         fi
     done
-    
+
     return 0
 }
 
@@ -99,25 +98,36 @@ check_system_info() {
     echo "操作系统: $(uname -s)"
     echo "架构: $(uname -m)"
     echo "内核版本: $(uname -r)"
-    
+
     if [[ "$OSTYPE" == "darwin"* ]]; then
         echo "macOS 版本: $(sw_vers -productVersion)"
         SYSTEM_TYPE="macos"
     else
         SYSTEM_TYPE="linux"
-        # 尝试检测 Linux 发行版
         if [[ -f /etc/os-release ]]; then
             source /etc/os-release
             echo "Linux 发行版: $PRETTY_NAME"
         fi
     fi
+
+    # GLIBC 版本检查 (Linux only)
+    if [[ "$SYSTEM_TYPE" == "linux" ]]; then
+        local glibc_version=$(ldd --version 2>&1 | head -n1 | grep -oE '[0-9]+\.[0-9]+$' || echo "未知")
+        echo "GLIBC 版本: $glibc_version"
+        if version_gte "$glibc_version" "2.39"; then
+            print_success "GLIBC >= 2.39 (预编译二进制兼容)"
+        else
+            print_warning "GLIBC < 2.39 (部分工具需要从源码编译)"
+        fi
+    fi
+
     echo
 }
 
 # 检查基础依赖
 check_basic_deps() {
     echo "=== 基础依赖检查 ==="
-    
+
     # 检查 Neovim
     if command_exists nvim; then
         local nvim_version=$(check_version "nvim" "0.9.0" "nvim --version | head -n1 | sed 's/.*v//'")
@@ -129,7 +139,7 @@ check_basic_deps() {
     else
         print_error "Neovim: 未安装"
     fi
-    
+
     # 检查 Git
     if command_exists git; then
         local git_version=$(check_version "git" "2.19.0" "git --version | sed 's/git version //'")
@@ -141,7 +151,7 @@ check_basic_deps() {
     else
         print_error "Git: 未安装"
     fi
-    
+
     # 检查 curl
     if command_exists curl; then
         local curl_version=$(check_version "curl" "7.0.0" "curl --version | head -n1 | sed 's/curl //' | sed 's/ .*//'")
@@ -149,7 +159,7 @@ check_basic_deps() {
     else
         print_error "curl: 未安装"
     fi
-    
+
     # 检查 C 编译器
     if command_exists clang; then
         local clang_version=$(check_version "clang" "10.0.0" "clang --version | head -n1 | sed 's/.*version //' | sed 's/ .*//'")
@@ -160,14 +170,30 @@ check_basic_deps() {
     else
         print_error "C 编译器: 未安装"
     fi
-    
+
+    # 检查 tree-sitter CLI
+    if command_exists tree-sitter; then
+        local ts_version=$(tree-sitter --version 2>/dev/null || echo "unknown")
+        print_success "tree-sitter CLI: $ts_version"
+    else
+        print_warning "tree-sitter CLI: 未安装 (Treesitter 语法解析需要)"
+    fi
+
+    # 检查 Rust/cargo
+    if command_exists cargo; then
+        local cargo_version=$(cargo --version 2>/dev/null | head -n1)
+        print_success "Rust/cargo: $cargo_version"
+    else
+        print_info "Rust/cargo: 未安装 (仅在 GLIBC < 2.39 时需要)"
+    fi
+
     echo
 }
 
 # 检查可选工具
 check_optional_tools() {
     echo "=== 可选工具检查 ==="
-    
+
     # 检查 fzf
     if command_exists fzf; then
         local fzf_version=$(check_version "fzf" "0.25.1" "fzf --version")
@@ -179,7 +205,7 @@ check_optional_tools() {
     else
         print_warning "fzf: 未安装 (推荐)"
     fi
-    
+
     # 检查 ripgrep
     if command_exists rg; then
         local rg_version=$(check_version "rg" "12.0.0" "rg --version | head -n1 | sed 's/ripgrep //' | sed 's/ .*//'")
@@ -187,7 +213,7 @@ check_optional_tools() {
     else
         print_warning "ripgrep: 未安装 (推荐)"
     fi
-    
+
     # 检查 fd
     if command_exists fd; then
         local fd_version=$(check_version "fd" "8.0.0" "fd --version | sed 's/fd //' | sed 's/ .*//'")
@@ -195,7 +221,7 @@ check_optional_tools() {
     else
         print_warning "fd: 未安装 (推荐)"
     fi
-    
+
     # 检查 lazygit
     if command_exists lazygit; then
         local lazygit_version=$(check_version "lazygit" "0.30.0" "lazygit --version | sed 's/lazygit version //'")
@@ -203,18 +229,17 @@ check_optional_tools() {
     else
         print_warning "lazygit: 未安装 (推荐)"
     fi
-    
+
     echo
 }
 
 # 检查字体
 check_fonts() {
     echo "=== 字体检查 ==="
-    
+
     local font_found=false
-    
+
     if [[ "$SYSTEM_TYPE" == "macos" ]]; then
-        # macOS 字体目录
         local font_dirs=(
             "/System/Library/Fonts"
             "/Library/Fonts"
@@ -222,7 +247,7 @@ check_fonts() {
             "/opt/homebrew/share/fonts"
             "/usr/local/share/fonts"
         )
-        
+
         for dir in "${font_dirs[@]}"; do
             if [[ -d "$dir" ]]; then
                 if find "$dir" -name "*CaskaydiaCove*" -o -name "*Caskaydia*" 2>/dev/null | grep -q .; then
@@ -232,20 +257,19 @@ check_fonts() {
                 fi
             fi
         done
-        
+
         if [[ "$font_found" == false ]]; then
             print_warning "CaskaydiaCove Nerd Font 未找到"
             echo "  建议运行: brew install --cask font-caskaydia-cove-nerd-font"
         fi
     else
-        # Linux 字体目录
         local font_dirs=(
             "$HOME/.local/share/fonts"
             "/usr/share/fonts"
             "/usr/local/share/fonts"
             "/opt/share/fonts"
         )
-        
+
         for dir in "${font_dirs[@]}"; do
             if [[ -d "$dir" ]]; then
                 if find "$dir" -name "*CaskaydiaCove*" -o -name "*Caskaydia*" 2>/dev/null | grep -q .; then
@@ -255,102 +279,86 @@ check_fonts() {
                 fi
             fi
         done
-        
-        # 使用 fc-list 检查字体
+
         if command_exists fc-list; then
             if fc-list | grep -i "caskaydia" >/dev/null 2>&1; then
                 print_success "CaskaydiaCove Nerd Font 已安装 (通过 fc-list 检测)"
                 font_found=true
             fi
         fi
-        
+
         if [[ "$font_found" == false ]]; then
             print_warning "CaskaydiaCove Nerd Font 未找到"
             echo "  建议手动下载并安装字体到 ~/.local/share/fonts/"
         fi
     fi
-    
+
     echo
 }
 
 # 检查终端
 check_terminal() {
     echo "=== 终端检查 ==="
-    
+
     local terminal_found=false
-    
+
     if [[ "$SYSTEM_TYPE" == "macos" ]]; then
-        # macOS 终端检查
-        local terminals=(
-            "iTerm2"
-            "kitty"
-            "wezterm"
-            "alacritty"
-        )
-        
+        local terminals=("iTerm2" "kitty" "wezterm" "alacritty")
+
         for terminal in "${terminals[@]}"; do
             if command_exists "$terminal" || [[ -d "/Applications/$terminal.app" ]]; then
                 print_success "$terminal 已安装"
                 terminal_found=true
             fi
         done
-        
+
         if [[ "$terminal_found" == false ]]; then
             print_warning "未找到推荐的终端应用"
             echo "  建议安装: iTerm2, Kitty, WezTerm 或 Alacritty"
         fi
     else
-        # Linux 终端检查
-        local terminals=(
-            "kitty"
-            "wezterm"
-            "alacritty"
-            "gnome-terminal"
-            "konsole"
-            "xterm"
-        )
-        
+        local terminals=("kitty" "wezterm" "alacritty" "gnome-terminal" "konsole" "xterm")
+
         for terminal in "${terminals[@]}"; do
             if command_exists "$terminal"; then
                 print_success "$terminal 已安装"
                 terminal_found=true
             fi
         done
-        
+
         if [[ "$terminal_found" == false ]]; then
             print_warning "未找到推荐的终端应用"
             echo "  建议安装: Kitty, WezTerm, Alacritty 或使用系统默认终端"
         fi
     fi
-    
-    # 检查终端颜色支持
+
     if [[ -n "$TERM_PROGRAM" ]]; then
         print_info "当前终端: $TERM_PROGRAM"
     fi
-    
+
     if [[ -n "$COLORTERM" ]]; then
         print_info "颜色支持: $COLORTERM"
     fi
-    
+
     echo
 }
 
 # 检查 LazyVim 配置
 check_lazyvim_config() {
     echo "=== LazyVim 配置检查 ==="
-    
+
     local config_dir="$HOME/.config/nvim"
-    
+
     if [[ -d "$config_dir" ]]; then
         print_success "LazyVim 配置目录存在: $config_dir"
-        
+
         # 检查关键文件
         local files=(
             "init.lua"
             "lua/config/init.lua"
             "lua/plugins/init.lua"
         )
-        
+
         for file in "${files[@]}"; do
             if [[ -f "$config_dir/$file" ]]; then
                 print_success "配置文件存在: $file"
@@ -362,7 +370,49 @@ check_lazyvim_config() {
         print_error "LazyVim 配置目录不存在: $config_dir"
         echo "  建议运行: git clone https://github.com/LazyVim/starter ~/.config/nvim"
     fi
-    
+
+    echo
+}
+
+# 检查预装插件配置
+check_extras_config() {
+    echo "=== 预装插件配置检查 ==="
+
+    local plugins_dir="$HOME/.config/nvim/lua/plugins"
+
+    # Extras 配置
+    if [[ -f "$plugins_dir/extras.lua" ]]; then
+        print_success "Lazy Extras 配置: extras.lua"
+    else
+        print_warning "Lazy Extras 配置缺失: extras.lua"
+    fi
+
+    # OSC52 剪贴板
+    if [[ -f "$plugins_dir/osc52.lua" ]]; then
+        print_success "OSC52 剪贴板配置: osc52.lua"
+    else
+        if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
+            print_warning "SSH 环境未配置 OSC52 剪贴板: osc52.lua"
+        else
+            print_info "非 SSH 环境，OSC52 配置可选"
+        fi
+    fi
+
+    # Markdown LSP
+    if [[ -f "$plugins_dir/markdown-lsp.lua" ]]; then
+        print_success "Markdown LSP 配置: markdown-lsp.lua"
+    else
+        print_warning "Markdown LSP 配置缺失: markdown-lsp.lua"
+    fi
+
+    # marksman 安装状态
+    local marksman_bin="$HOME/.local/share/nvim/mason/bin/marksman"
+    if [[ -x "$marksman_bin" ]]; then
+        print_success "marksman LSP: 已安装"
+    else
+        print_warning "marksman LSP: 未安装 (在 nvim 中运行 :MasonInstall marksman)"
+    fi
+
     echo
 }
 
@@ -370,16 +420,14 @@ check_lazyvim_config() {
 check_package_manager() {
     if [[ "$SYSTEM_TYPE" == "macos" ]]; then
         echo "=== Homebrew 检查 ==="
-        
+
         if command_exists brew; then
             local brew_version=$(check_version "brew" "2.0.0" "brew --version | head -n1 | sed 's/Homebrew //'")
             print_success "Homebrew: $brew_version"
-            
-            # 检查 Homebrew 路径
+
             local brew_path=$(which brew)
             print_info "Homebrew 路径: $brew_path"
-            
-            # 检查 Homebrew 状态
+
             if brew doctor >/dev/null 2>&1; then
                 print_success "Homebrew 状态正常"
             else
@@ -387,12 +435,10 @@ check_package_manager() {
             fi
         else
             print_error "Homebrew 未安装"
-            echo "  建议运行: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
         fi
     else
         echo "=== 包管理器检查 ==="
-        
-        # 检查常见的 Linux 包管理器
+
         if command_exists apt; then
             print_success "包管理器: apt (Ubuntu/Debian)"
         elif command_exists yum; then
@@ -405,20 +451,20 @@ check_package_manager() {
             print_warning "未检测到常见的包管理器"
         fi
     fi
-    
+
     echo
 }
 
 # 检查网络连接
 check_network() {
     echo "=== 网络连接检查 ==="
-    
+
     local hosts=(
         "github.com"
         "raw.githubusercontent.com"
         "api.github.com"
     )
-    
+
     for host in "${hosts[@]}"; do
         if ping -c 1 "$host" >/dev/null 2>&1; then
             print_success "网络连接正常: $host"
@@ -426,14 +472,14 @@ check_network() {
             print_error "网络连接失败: $host"
         fi
     done
-    
+
     echo
 }
 
 # 生成报告
 generate_report() {
     echo "=== 检查报告 ==="
-    
+
     echo
     echo "检查完成！"
     echo
@@ -443,26 +489,14 @@ generate_report() {
     echo "3. 如果有警告，建议安装相关工具以获得更好的体验"
     echo "4. 运行 'nvim' 启动 LazyVim"
     echo "5. 在 Neovim 中运行 ':LazyHealth' 检查插件状态"
-    
-    if [[ "$SYSTEM_TYPE" == "macos" ]]; then
-        echo
-        echo "macOS 特定建议:"
-        echo "- 确保在终端中设置了 CaskaydiaCove Nerd Font"
-        echo "- 推荐使用 iTerm2 以获得最佳体验"
-    else
-        echo
-        echo "Linux 特定建议:"
-        echo "- 确保字体已正确安装并刷新字体缓存: fc-cache -fv"
-        echo "- 推荐使用支持真彩色的终端模拟器"
-    fi
 }
 
 # 主函数
 main() {
-    echo "🔍 LazyVim 系统检查工具"
-    echo "=========================="
+    echo "🔍 LazyVim 系统检查工具 v2.0.0"
+    echo "================================="
     echo
-    
+
     check_system_info
     check_package_manager
     check_basic_deps
@@ -470,6 +504,7 @@ main() {
     check_fonts
     check_terminal
     check_lazyvim_config
+    check_extras_config
     check_network
     generate_report
 }

@@ -1,136 +1,102 @@
 # LazyVim 安装项目
 
-> 🚀 一键安装 LazyVim 的完整解决方案
+> 一键安装 LazyVim 的完整解决方案，开箱即用
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue.svg)](https://github.com/LazyVim/starter)
-[![GitHub stars](https://img.shields.io/github/stars/corner430/lazyvim-installer.svg?style=social&label=Star)](https://github.com/corner430/lazyvim-installer)
-[![GitHub forks](https://img.shields.io/github/forks/corner430/lazyvim-installer.svg?style=social&label=Fork)](https://github.com/corner430/lazyvim-installer)
 
-## 📖 项目简介
+## 项目简介
 
-这是一个专为 LazyVim 设计的完整安装解决方案，包含：
+一个专为 LazyVim 设计的完整安装解决方案，安装后即可直接开始编码：
 
-- 🎯 **自动安装脚本** - 一键安装所有依赖
-- 📋 **详细安装指南** - 手动安装的完整教程
-- 🔍 **系统检查工具** - 验证安装是否成功
-- 📚 **学习资源** - 快速上手指南
+- **自动安装脚本** - 一键安装所有依赖和插件
+- **开箱即用** - 预装 C/C++、Markdown 语言支持和常用插件
+- **SSH 友好** - 自动检测 SSH 环境并配置剪贴板互通
+- **GLIBC 兼容** - 自动处理低版本 GLIBC 的 tree-sitter 兼容性问题
+- **系统检查工具** - 验证安装是否成功
 
-## ✨ 特性
-
-- 🔄 **跨平台支持** - 支持 Linux 和 macOS
-- 🤖 **自动化安装** - 无需手动配置
-- 🛡️ **安全可靠** - 自动备份现有配置
-- 📦 **依赖管理** - 自动安装所有必需工具
-- 🎨 **字体配置** - 自动安装 Nerd Font
-- 🔧 **智能检测** - 自动识别系统和包管理器
-
-## 🚀 快速开始
-
-### 方法一：自动安装（推荐）
+## 快速开始
 
 ```bash
-# 克隆项目
 git clone https://github.com/corner430/lazyvim-installer.git
 cd lazyvim-installer
-
-# 给脚本执行权限
 chmod +x install-lazyvim.sh
-
-# 运行自动安装脚本
 ./install-lazyvim.sh
 ```
 
-### 方法二：手动安装
+手动安装请参考 [LazyVim-Installation-Guide.md](./LazyVim-Installation-Guide.md)。
 
-1. 查看详细安装指南：[LazyVim-Installation-Guide.md](./LazyVim-Installation-Guide.md)
-2. 按照指南步骤手动安装
+## 预装插件
 
-## 📋 系统要求
+安装脚本会自动启用以下 Lazy Extras：
 
-### 最低要求
-- **Neovim >= 0.9.0**
-- **Git >= 2.19.0**
-- **支持真彩色的终端**
+| 分类 | 插件 | 说明 |
+|------|------|------|
+| 语言 | `lang.clangd` | C/C++ 语言支持（补全、跳转、诊断） |
+| 语言 | `lang.cmake` | CMake 支持 |
+| 语言 | `lang.markdown` | Markdown 支持 + marksman LSP |
+| 调试 | `dap.core` | DAP 调试框架 |
+| 编码 | `coding.mini-surround` | 括号/引号包围操作 |
+| 编码 | `coding.yanky` | 增强复制粘贴 |
+| 编辑器 | `editor.inc-rename` | 实时重命名预览 |
+| UI | `ui.treesitter-context` | 顶部显示当前函数/类名 |
 
-### 推荐配置
-- **Nerd Font v3.0+**
-- **C 编译器** (用于 treesitter)
-- **ripgrep** (快速搜索)
-- **fzf** (模糊查找)
-- **lazygit** (Git 界面)
+## SSH 剪贴板互通
 
-## 📁 项目结构
+在 SSH 环境下，安装脚本会自动配置 [OSC52](https://github.com/ojroques/nvim-osc52) 协议，使 `yy` 等复制操作可以同步到本地剪贴板。
+
+**需要你的本地终端支持 OSC52：**
+- iTerm2、WezTerm、Alacritty、Windows Terminal、kitty
+- macOS Terminal.app **不支持**
+- tmux 需在 `~/.tmux.conf` 添加 `set -g set-clipboard on`
+
+## 已知问题
+
+### GLIBC 兼容性
+
+部分 Linux 发行版（如 TencentOS、CentOS 8 等）的 GLIBC 版本低于 2.39，Mason 预编译的 `tree-sitter CLI` 会报错：
+
+```
+tree-sitter: /lib64/libc.so.6: version `GLIBC_2.39' not found
+```
+
+安装脚本会自动检测 GLIBC 版本，在低版本系统上通过 Rust 从源码编译 tree-sitter CLI。此过程会自动安装 Rust（如果尚未安装）。
+
+## 系统要求
+
+| 要求 | 最低版本 |
+|------|----------|
+| Neovim | >= 0.9.0 |
+| Git | >= 2.19.0 |
+| 终端 | 支持真彩色 |
+
+推荐工具（脚本会自动安装）：Nerd Font、ripgrep、fzf、fd、lazygit、C 编译器
+
+## 项目结构
 
 ```
 lazyvim-installer/
-├── README.md                           # 项目说明文档
-├── install-lazyvim.sh                  # 自动安装脚本
-├── check-system.sh                     # 系统检查脚本
-├── LazyVim-Installation-Guide.md      # 详细安装指南
-├── LICENSE                             # MIT 许可证
-└── .gitignore                          # Git 忽略文件
+├── install-lazyvim.sh              # 自动安装脚本
+├── check-system.sh                 # 系统检查脚本
+├── LazyVim-Installation-Guide.md   # 详细手动安装指南
+├── README.md                       # 本文档
+└── LICENSE                         # MIT 许可证
 ```
 
-## 🔧 脚本说明
+## 安装后验证
 
-### install-lazyvim.sh
-自动安装脚本，功能包括：
-- 检测操作系统和包管理器
-- 安装所有必需依赖
-- 编译安装 Neovim (Linux)
-- 安装 Nerd Font
-- 配置 LazyVim
-- 自动安装插件
-
-### check-system.sh
-系统检查脚本，验证：
-- Neovim 版本
-- 必需工具是否安装
-- 字体是否正确安装
-- 终端配置
-
-## 🎯 安装后配置
-
-### 终端字体设置
-
-**Linux (GNOME Terminal):**
-1. 打开终端设置
-2. 选择字体为 "CaskaydiaCove Nerd Font Mono"
-3. 启用连字支持
-
-**macOS (iTerm2):**
-1. 打开 iTerm2 偏好设置
-2. 选择字体为 "CaskaydiaCove Nerd Font Mono"
-3. 启用连字支持
-
-### VSCode 配置
-
-```json
-{
-  "terminal.integrated.fontFamily": "CaskaydiaCove Nerd Font Mono",
-  "terminal.integrated.fontLigatures.enabled": true,
-  "editor.fontLigatures": true,
-  "editor.fontFamily": "CaskaydiaCove Nerd Font Mono"
-}
+```bash
+chmod +x check-system.sh
+./check-system.sh
 ```
 
-## 📄 许可证
+## 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+MIT License - 详见 [LICENSE](LICENSE)。
 
-## 🙏 致谢
+## 致谢
 
-- [LazyVim](https://github.com/LazyVim/LazyVim) - 优秀的 Neovim 配置框架
-- [Neovim](https://neovim.io/) - 现代化的 Vim 编辑器
-- [Nerd Fonts](https://www.nerdfonts.com/) - 优秀的编程字体
-
-## 📞 联系方式
-
-- 项目主页：[GitHub](https://github.com/corner430/lazyvim-installer)
-- 问题反馈：[Issues](https://github.com/corner430/lazyvim-installer/issues)
-- 邮箱：corner@88.com
-
----
-
-⭐ 如果这个项目对你有帮助，请给它一个星标！
+- [LazyVim](https://github.com/LazyVim/LazyVim)
+- [Neovim](https://neovim.io/)
+- [Nerd Fonts](https://www.nerdfonts.com/)
+- [nvim-osc52](https://github.com/ojroques/nvim-osc52)

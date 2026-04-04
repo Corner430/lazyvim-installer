@@ -3,7 +3,7 @@
 # LazyVim 自动安装脚本
 # 支持 Linux 和 macOS 系统
 # 作者: Corner
-# 版本: 1.0.0
+# 版本: 2.0.0
 
 set -e  # 遇到错误立即退出
 
@@ -68,23 +68,42 @@ need_sudo() {
     fi
 }
 
+# 获取系统 GLIBC 版本
+get_glibc_version() {
+    ldd --version 2>&1 | head -n1 | grep -oE '[0-9]+\.[0-9]+$' || echo "0.0"
+}
+
+# 版本比较: 返回 0 表示 $1 >= $2
+version_gte() {
+    local IFS='.'
+    read -ra V1 <<< "$1"
+    read -ra V2 <<< "$2"
+    for i in "${!V2[@]}"; do
+        local v1=${V1[$i]:-0}
+        local v2=${V2[$i]:-0}
+        if (( 10#$v1 > 10#$v2 )); then return 0; fi
+        if (( 10#$v1 < 10#$v2 )); then return 1; fi
+    done
+    return 0
+}
+
 # 安装 ripgrep
 install_ripgrep() {
     if command -v rg &> /dev/null; then
         log_success "ripgrep 已安装"
         return 0
     fi
-    
+
     local SUDO=$(need_sudo)
     log_info "正在安装 ripgrep..."
-    
+
     cd /tmp
     wget -O ripgrep.tar.gz https://github.com/BurntSushi/ripgrep/releases/download/14.1.0/ripgrep-14.1.0-x86_64-unknown-linux-musl.tar.gz
     tar -xzf ripgrep.tar.gz
     $SUDO cp ripgrep-14.1.0-x86_64-unknown-linux-musl/rg /usr/local/bin/
     rm -rf ripgrep.tar.gz ripgrep-14.1.0-x86_64-unknown-linux-musl
     cd - > /dev/null
-    
+
     log_success "ripgrep 安装完成"
 }
 
@@ -94,15 +113,15 @@ install_fzf() {
         log_success "fzf 已安装"
         return 0
     fi
-    
+
     log_info "正在安装 fzf..."
-    
+
     git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
     ~/.fzf/install --bin
-    
+
     local SUDO=$(need_sudo)
     $SUDO cp ~/.fzf/bin/fzf /usr/local/bin/
-    
+
     log_success "fzf 安装完成"
 }
 
@@ -112,17 +131,17 @@ install_fd() {
         log_success "fd 已安装"
         return 0
     fi
-    
+
     local SUDO=$(need_sudo)
     log_info "正在安装 fd..."
-    
+
     cd /tmp
     wget -O fd.tar.gz https://github.com/sharkdp/fd/releases/download/v9.0.0/fd-v9.0.0-x86_64-unknown-linux-musl.tar.gz
     tar -xzf fd.tar.gz
     $SUDO cp fd-v9.0.0-x86_64-unknown-linux-musl/fd /usr/local/bin/
     rm -rf fd.tar.gz fd-v9.0.0-x86_64-unknown-linux-musl
     cd - > /dev/null
-    
+
     log_success "fd 安装完成"
 }
 
@@ -130,29 +149,29 @@ install_fd() {
 install_linux_deps() {
     local pkg_manager=$1
     local SUDO=$(need_sudo)
-    
+
     log_info "正在安装基础依赖..."
-    
+
     case $pkg_manager in
         "apt")
             $SUDO apt update
-            $SUDO apt install -y git cmake ninja-build gettext curl unzip build-essential wget
+            $SUDO apt install -y git cmake ninja-build gettext curl unzip build-essential wget libicu-dev
             # 尝试安装，如果失败则从源码安装
             $SUDO apt install -y ripgrep fzf fd-find || true
             ;;
         "yum"|"dnf")
             $SUDO $pkg_manager update -y
-            $SUDO $pkg_manager install -y git cmake ninja-build gettext curl unzip gcc gcc-c++ make wget tar gzip fontconfig
+            $SUDO $pkg_manager install -y git cmake ninja-build gettext curl unzip gcc gcc-c++ make wget tar gzip fontconfig libicu
             # 尝试安装，如果失败则从源码安装
             $SUDO $pkg_manager install -y ripgrep fzf fd-find 2>/dev/null || true
             ;;
     esac
-    
+
     # 安装可能缺失的工具
     install_ripgrep
     install_fzf
     install_fd
-    
+
     # 安装 lazygit
     log_info "正在安装 lazygit..."
     if ! command -v lazygit &> /dev/null; then
@@ -166,121 +185,275 @@ install_linux_deps() {
     else
         log_success "lazygit 已安装"
     fi
-    
+
     log_success "基础依赖安装完成"
 }
 
 # 安装基础依赖 (macOS)
 install_macos_deps() {
     log_info "正在安装基础依赖..."
-    
+
     # 检查是否安装了 Homebrew
     if ! command -v brew &> /dev/null; then
         log_info "正在安装 Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
-    
+
     # 安装基础工具
     brew install neovim git curl fzf ripgrep fd lazygit
-    
+
     # 安装 Xcode 命令行工具
     if ! command -v clang &> /dev/null; then
         log_info "正在安装 Xcode 命令行工具..."
         xcode-select --install
     fi
-    
+
     log_success "基础依赖安装完成"
 }
 
 # 编译安装 Neovim (Linux)
 install_neovim_linux() {
     local SUDO=$(need_sudo)
-    
+
     log_info "正在编译安装 Neovim..."
-    
+
     # 检查是否已经安装了足够新的版本
     if command -v nvim &> /dev/null; then
         local version=$(nvim --version | head -n1 | grep -o 'v[0-9]\+\.[0-9]\+')
         local major=$(echo $version | cut -d. -f1 | tr -d 'v')
         local minor=$(echo $version | cut -d. -f2)
-        
+
         if [[ $major -gt 0 ]] || [[ $major -eq 0 && $minor -ge 9 ]]; then
             log_success "Neovim 版本已满足要求: $version"
             return 0
         fi
     fi
-    
+
     # 克隆并编译 Neovim
     cd /tmp
     git clone https://github.com/neovim/neovim.git
     cd neovim
-    
+
     make CMAKE_BUILD_TYPE=RelWithDebInfo
     $SUDO make install
-    
+
     cd ..
     rm -rf neovim
-    
+
     log_success "Neovim 安装完成"
+}
+
+# 安装 tree-sitter CLI（处理 GLIBC 兼容性）
+install_tree_sitter_cli() {
+    if command -v tree-sitter &> /dev/null; then
+        log_success "tree-sitter CLI 已安装: $(tree-sitter --version 2>/dev/null || echo 'unknown')"
+        return 0
+    fi
+
+    local SUDO=$(need_sudo)
+    local glibc_version=$(get_glibc_version)
+
+    if version_gte "$glibc_version" "2.39"; then
+        log_info "GLIBC $glibc_version >= 2.39，Mason 会自动安装 tree-sitter CLI"
+        return 0
+    fi
+
+    log_warning "GLIBC $glibc_version < 2.39，预编译 tree-sitter CLI 不兼容"
+    log_info "正在通过 Rust 从源码编译 tree-sitter CLI..."
+
+    # 安装 Rust（如果未安装）
+    if ! command -v cargo &> /dev/null; then
+        log_info "正在安装 Rust..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
+    fi
+
+    # 通过 cargo 编译安装
+    cargo install tree-sitter-cli
+
+    # 复制到系统路径
+    $SUDO ln -sf "$HOME/.cargo/bin/tree-sitter" /usr/local/bin/tree-sitter
+
+    log_success "tree-sitter CLI 编译安装完成: $(tree-sitter --version)"
 }
 
 # 安装 Nerd Font (Linux)
 install_nerd_font_linux() {
     log_info "正在安装 Nerd Font..."
-    
+
     mkdir -p ~/.local/share/fonts
-    
+
     cd ~
     wget -O CascadiaCode.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/CascadiaCode.zip
     unzip -o CascadiaCode.zip -d ~/.local/share/fonts/
     rm CascadiaCode.zip
-    
+
     # 刷新字体缓存（如果 fc-cache 可用）
     if command -v fc-cache &> /dev/null; then
         fc-cache -fv
     else
         log_warning "fc-cache 不可用，字体可能需要重启终端后才能生效"
     fi
-    
+
     log_success "Nerd Font 安装完成"
 }
 
 # 安装 Nerd Font (macOS)
 install_nerd_font_macos() {
     log_info "正在安装 Nerd Font..."
-    
+
     brew tap homebrew/cask-fonts
     brew install --cask font-caskaydia-cove-nerd-font
-    
+
     log_success "Nerd Font 安装完成"
 }
 
 # 安装 LazyVim
 install_lazyvim() {
     log_info "正在安装 LazyVim..."
-    
+
     # 备份现有配置
     if [[ -d ~/.config/nvim ]]; then
         log_warning "发现现有 Neovim 配置，正在备份..."
         mv ~/.config/nvim ~/.config/nvim.bak.$(date +%Y%m%d_%H%M%S)
     fi
-    
+
     # 清理缓存
     rm -rf ~/.local/share/nvim ~/.local/state/nvim ~/.cache/nvim 2>/dev/null || true
-    
+
     # 克隆 LazyVim 配置
     git clone https://github.com/LazyVim/starter ~/.config/nvim
     rm -rf ~/.config/nvim/.git
-    
+
     log_success "LazyVim 配置安装完成"
+}
+
+# 配置 Lazy Extras（预装推荐插件）
+configure_extras() {
+    log_info "正在配置 Lazy Extras 插件..."
+
+    mkdir -p ~/.config/nvim/lua/plugins
+
+    cat > ~/.config/nvim/lua/plugins/extras.lua << 'LUAEOF'
+-- 预装的 Lazy Extras 插件
+-- 由 lazyvim-installer 自动生成
+return {
+  -- 语言支持
+  { import = "lazyvim.plugins.extras.lang.clangd" },
+  { import = "lazyvim.plugins.extras.lang.cmake" },
+  { import = "lazyvim.plugins.extras.lang.markdown" },
+
+  -- 调试
+  { import = "lazyvim.plugins.extras.dap.core" },
+
+  -- 编码增强
+  { import = "lazyvim.plugins.extras.coding.mini-surround" },
+  { import = "lazyvim.plugins.extras.coding.yanky" },
+
+  -- 编辑器增强
+  { import = "lazyvim.plugins.extras.editor.inc-rename" },
+
+  -- UI 增强
+  { import = "lazyvim.plugins.extras.ui.treesitter-context" },
+}
+LUAEOF
+
+    log_success "Lazy Extras 插件配置完成"
+}
+
+# 配置 OSC52 剪贴板（SSH 环境）
+configure_clipboard() {
+    if [[ -z "$SSH_CLIENT" && -z "$SSH_TTY" ]]; then
+        log_info "非 SSH 环境，跳过 OSC52 剪贴板配置"
+        return 0
+    fi
+
+    log_info "检测到 SSH 环境，正在配置 OSC52 剪贴板..."
+
+    mkdir -p ~/.config/nvim/lua/plugins
+
+    cat > ~/.config/nvim/lua/plugins/osc52.lua << 'LUAEOF'
+return {
+  {
+    "ojroques/nvim-osc52",
+    config = function()
+      require("osc52").setup({
+        max_length = 0,
+        silent = false,
+        trim = false,
+      })
+
+      local function copy()
+        if vim.v.event.operator == "y" and vim.v.event.regname == "" then
+          require("osc52").copy_register("")
+        end
+      end
+
+      vim.api.nvim_create_autocmd("TextYankPost", {
+        callback = copy,
+      })
+    end,
+  },
+}
+LUAEOF
+
+    # 追加 clipboard 设置到 options.lua
+    local options_file="$HOME/.config/nvim/lua/config/options.lua"
+    if ! grep -q "vim.opt.clipboard" "$options_file" 2>/dev/null; then
+        echo "" >> "$options_file"
+        echo "-- Enable system clipboard integration (OSC52)" >> "$options_file"
+        echo 'vim.opt.clipboard = "unnamedplus"' >> "$options_file"
+    fi
+
+    log_success "OSC52 剪贴板配置完成"
+}
+
+# 配置 Markdown LSP
+configure_markdown_lsp() {
+    log_info "正在配置 Markdown LSP..."
+
+    mkdir -p ~/.config/nvim/lua/plugins
+
+    cat > ~/.config/nvim/lua/plugins/markdown-lsp.lua << 'LUAEOF'
+return {
+  -- marksman LSP for markdown
+  {
+    "neovim/nvim-lspconfig",
+    opts = function(_, opts)
+      opts.servers = opts.servers or {}
+      opts.servers.marksman = {
+        mason = true,
+        filetypes = { "markdown", "markdown.mdx" },
+      }
+      return opts
+    end,
+  },
+
+  -- Ensure marksman is installed via Mason
+  {
+    "mason-org/mason.nvim",
+    opts = {
+      ensure_installed = {
+        "marksman",
+      },
+    },
+  },
+}
+LUAEOF
+
+    log_success "Markdown LSP 配置完成"
 }
 
 # 安装插件
 install_plugins() {
     log_info "正在安装插件 (这可能需要几分钟)..."
-    
-    nvim --headless -c "Lazy! sync" -c "qa"
-    
+
+    nvim --headless -c "Lazy! sync" -c "qa" 2>&1 || true
+
+    # 安装 Mason 工具
+    log_info "正在安装 Mason 工具..."
+    nvim --headless +"lua require('mason-registry').refresh()" +"MasonInstall marksman" +"sleep 30" +qa 2>&1 || true
+
     log_success "插件安装完成"
 }
 
@@ -289,50 +462,65 @@ show_completion_info() {
     echo
     log_success "🎉 LazyVim 安装完成！"
     echo
+    echo "已预装以下功能："
+    echo "  - C/C++ 支持 (clangd + CMake + DAP 调试)"
+    echo "  - Markdown 支持 (marksman LSP)"
+    echo "  - 编码增强 (mini-surround, yanky, inc-rename)"
+    echo "  - UI 增强 (treesitter-context)"
+    if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
+        echo "  - SSH 剪贴板互通 (OSC52)"
+    fi
+    echo
     echo "下一步操作："
     echo "1. 重启终端或重新加载终端配置"
     echo "2. 运行 'nvim' 启动 LazyVim"
-    echo "3. 查看 LazyVim-Installation-Guide.md 了解更多配置选项"
-    echo "4. 运行 './check-system.sh' 验证安装"
+    echo "3. 运行 './check-system.sh' 验证安装"
     echo
     echo "常用快捷键："
-    echo "- <Space> + f + f: 文件查找"
-    echo "- <Space> + f + g: 文本搜索"
-    echo "- <Space> + e: 文件浏览器"
-    echo "- <Space> + h: 帮助菜单"
+    echo "  <Space>ff  文件查找      <Space>fg  文本搜索"
+    echo "  <Space>e   文件浏览器    <Space>gg  LazyGit"
+    echo "  gd         跳转定义      gr         查看引用"
+    echo "  <Space>cr  重命名        <Space>ca  代码操作"
+    echo "  <Space>db  设置断点      <Space>dc  开始调试"
     echo
 }
 
 # 主函数
 main() {
-    echo "🚀 LazyVim 自动安装脚本"
-    echo "=========================="
+    echo "🚀 LazyVim 自动安装脚本 v2.0.0"
+    echo "================================="
     echo
-    
+
     # 检测操作系统
     local os=$(detect_os)
     log_info "检测到操作系统: $os"
-    
+
     # 检测包管理器
     local pkg_manager=$(detect_package_manager)
     log_info "检测到包管理器: $pkg_manager"
-    
+
     # 安装基础依赖
     if [[ $os == "linux" ]]; then
         install_linux_deps $pkg_manager
         install_neovim_linux
+        install_tree_sitter_cli
         install_nerd_font_linux
     else
         install_macos_deps
         install_nerd_font_macos
     fi
-    
+
     # 安装 LazyVim
     install_lazyvim
-    
+
+    # 配置开箱即用的插件
+    configure_extras
+    configure_clipboard
+    configure_markdown_lsp
+
     # 安装插件
     install_plugins
-    
+
     # 显示完成信息
     show_completion_info
 }
