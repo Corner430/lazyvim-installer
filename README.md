@@ -34,7 +34,7 @@ chmod +x install-lazyvim.sh
 |------|------|------|
 | 语言 | `lang.clangd` | C/C++ 语言支持（补全、跳转、诊断） |
 | 语言 | `lang.cmake` | CMake 支持 |
-| 语言 | `lang.markdown` | Markdown 支持 + marksman LSP |
+| 语言 | `lang.markdown` | Markdown 支持 + marksman LSP + 远程预览 |
 | 调试 | `dap.core` | DAP 调试框架 |
 | 编码 | `coding.mini-surround` | 括号/引号包围操作 |
 | 编码 | `coding.yanky` | 增强复制粘贴 |
@@ -45,10 +45,22 @@ chmod +x install-lazyvim.sh
 
 在 SSH 环境下，安装脚本会自动配置 [OSC52](https://github.com/ojroques/nvim-osc52) 协议，使 `yy` 等复制操作可以同步到本地剪贴板。
 
+> **注意：** 安装器会将 `vim.opt.clipboard` 设为 `""`（空字符串），而非 `"unnamedplus"`。这是因为 SSH 环境下没有系统剪贴板 provider，设为 `unnamedplus` 会导致 OSC52 不生效。
+
 **需要你的本地终端支持 OSC52：**
 - iTerm2、WezTerm、Alacritty、Windows Terminal、kitty
 - macOS Terminal.app **不支持**
 - tmux 需在 `~/.tmux.conf` 添加 `set -g set-clipboard on`
+
+## Markdown 远程预览
+
+在 SSH 环境下，`:MarkdownPreview` 默认无法打开浏览器。安装脚本会自动检测服务器 IP 并配置 markdown-preview.nvim 的远程访问：
+
+1. 在 nvim 中打开 Markdown 文件
+2. 执行 `:MarkdownPreview`
+3. 在本地浏览器访问 `http://<服务器IP>:8888`
+
+> 确保服务器防火墙放行了 8888 端口。
 
 ## 已知问题
 

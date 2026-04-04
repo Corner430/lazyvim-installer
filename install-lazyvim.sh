@@ -379,7 +379,7 @@ return {
     config = function()
       require("osc52").setup({
         max_length = 0,
-        silent = false,
+        silent = true,
         trim = false,
       })
 
@@ -397,26 +397,33 @@ return {
 }
 LUAEOF
 
-    # 追加 clipboard 设置到 options.lua
+    # SSH 环境不使用系统剪贴板 provider，由 OSC52 插件处理
     local options_file="$HOME/.config/nvim/lua/config/options.lua"
     if ! grep -q "vim.opt.clipboard" "$options_file" 2>/dev/null; then
         echo "" >> "$options_file"
-        echo "-- Enable system clipboard integration (OSC52)" >> "$options_file"
-        echo 'vim.opt.clipboard = "unnamedplus"' >> "$options_file"
+        echo '-- SSH 环境不使用系统剪贴板 provider，由 nvim-osc52 插件处理' >> "$options_file"
+        echo 'vim.opt.clipboard = ""' >> "$options_file"
     fi
 
     log_success "OSC52 剪贴板配置完成"
 }
 
-# 配置 Markdown LSP
-configure_markdown_lsp() {
-    log_info "正在配置 Markdown LSP..."
+# 配置 Markdown（LSP + 预览 + lint 修复）
+configure_markdown() {
+    log_info "正在配置 Markdown 支持..."
 
     mkdir -p ~/.config/nvim/lua/plugins
 
-    cat > ~/.config/nvim/lua/plugins/markdown-lsp.lua << 'LUAEOF'
+    # 检测服务器 IP（用于远程预览）
+    local server_ip
+    server_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [[ -z "$server_ip" ]]; then
+        server_ip="0.0.0.0"
+    fi
+
+    cat > ~/.config/nvim/lua/plugins/markdown.lua << LUAEOF
 return {
-  -- marksman LSP for markdown
+  -- marksman LSP
   {
     "neovim/nvim-lspconfig",
     opts = function(_, opts)
@@ -428,20 +435,42 @@ return {
       return opts
     end,
   },
-
-  -- Ensure marksman is installed via Mason
+  -- 禁用 markdownlint-cli2（避免 ENOENT 报错）
   {
-    "mason-org/mason.nvim",
+    "mfussenegger/nvim-lint",
+    optional = true,
     opts = {
-      ensure_installed = {
-        "marksman",
+      linters_by_ft = {
+        markdown = {},
       },
     },
+  },
+  {
+    "stevearc/conform.nvim",
+    optional = true,
+    opts = {
+      formatters_by_ft = {
+        ["markdown"] = { "prettier" },
+        ["markdown.mdx"] = { "prettier" },
+      },
+    },
+  },
+  -- Markdown 远程预览（SSH 环境通过 IP:端口 在本地浏览器访问）
+  {
+    "iamcco/markdown-preview.nvim",
+    optional = true,
+    opts = function()
+      vim.g.mkdp_open_to_the_world = 1
+      vim.g.mkdp_open_ip = "${server_ip}"
+      vim.g.mkdp_port = 8888
+      vim.g.mkdp_echo_preview_url = 1
+      vim.g.mkdp_browser = "echo"
+    end,
   },
 }
 LUAEOF
 
-    log_success "Markdown LSP 配置完成"
+    log_success "Markdown 支持配置完成（LSP + 预览 + lint 修复）"
 }
 
 # 安装插件
@@ -464,12 +493,13 @@ show_completion_info() {
     echo
     echo "已预装以下功能："
     echo "  - C/C++ 支持 (clangd + CMake + DAP 调试)"
-    echo "  - Markdown 支持 (marksman LSP)"
+    echo "  - Markdown 支持 (marksman LSP + 远程预览)"
     echo "  - 编码增强 (mini-surround, yanky, inc-rename)"
     echo "  - UI 增强 (treesitter-context)"
     if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
         echo "  - SSH 剪贴板互通 (OSC52)"
     fi
+    echo "  - Markdown 预览: nvim 中 :MarkdownPreview，浏览器访问 http://$(hostname -I 2>/dev/null | awk '{print $1}'):8888"
     echo
     echo "下一步操作："
     echo "1. 重启终端或重新加载终端配置"
@@ -516,7 +546,7 @@ main() {
     # 配置开箱即用的插件
     configure_extras
     configure_clipboard
-    configure_markdown_lsp
+    configure_markdown
 
     # 安装插件
     install_plugins

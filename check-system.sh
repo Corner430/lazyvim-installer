@@ -398,11 +398,13 @@ check_extras_config() {
         fi
     fi
 
-    # Markdown LSP
-    if [[ -f "$plugins_dir/markdown-lsp.lua" ]]; then
-        print_success "Markdown LSP 配置: markdown-lsp.lua"
+    # Markdown 配置（合并文件）
+    if [[ -f "$plugins_dir/markdown.lua" ]]; then
+        print_success "Markdown 配置: markdown.lua (LSP + 预览 + lint 修复)"
+    elif [[ -f "$plugins_dir/markdown-lsp.lua" ]]; then
+        print_success "Markdown LSP 配置: markdown-lsp.lua (旧版)"
     else
-        print_warning "Markdown LSP 配置缺失: markdown-lsp.lua"
+        print_warning "Markdown 配置缺失: markdown.lua"
     fi
 
     # marksman 安装状态
