@@ -1,5 +1,7 @@
 # LazyVim 安装项目
 
+![banner](assets/images/banner.png)
+
 > 一键安装 LazyVim 的完整解决方案，开箱即用
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -26,7 +28,13 @@ chmod +x install-lazyvim.sh
 
 手动安装请参考 [LazyVim-Installation-Guide.md](./LazyVim-Installation-Guide.md)。
 
+### 安装流程
+
+![安装流程](assets/images/install-flow.png)
+
 ## 预装插件
+
+![组件关系](assets/images/components.png)
 
 安装脚本会自动启用以下 Lazy Extras：
 
