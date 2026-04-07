@@ -329,34 +329,24 @@ install_lazyvim() {
 }
 
 # 配置 Lazy Extras（预装推荐插件）
+# 注意：extras 必须在 lazy.lua 的 spec 中、位于 lazyvim.plugins 和用户 plugins 之间
+# 否则 LazyVim 会报加载顺序错误
 configure_extras() {
     log_info "正在配置 Lazy Extras 插件..."
 
-    mkdir -p ~/.config/nvim/lua/plugins
+    local lazy_file="$HOME/.config/nvim/lua/config/lazy.lua"
 
-    cat > ~/.config/nvim/lua/plugins/extras.lua << 'LUAEOF'
--- 预装的 Lazy Extras 插件
--- 由 lazyvim-installer 自动生成
-return {
-  -- 语言支持
-  { import = "lazyvim.plugins.extras.lang.clangd" },
-  { import = "lazyvim.plugins.extras.lang.cmake" },
-  { import = "lazyvim.plugins.extras.lang.markdown" },
-
-  -- 调试
-  { import = "lazyvim.plugins.extras.dap.core" },
-
-  -- 编码增强
-  { import = "lazyvim.plugins.extras.coding.mini-surround" },
-  { import = "lazyvim.plugins.extras.coding.yanky" },
-
-  -- 编辑器增强
-  { import = "lazyvim.plugins.extras.editor.inc-rename" },
-
-  -- UI 增强
-  { import = "lazyvim.plugins.extras.ui.treesitter-context" },
-}
-LUAEOF
+    # 在 { import = "plugins" } 之前插入 extras import
+    sed -i '/{ import = "plugins" }/i\
+    -- 预装的 Lazy Extras（由 lazyvim-installer 自动生成）\
+    { import = "lazyvim.plugins.extras.lang.clangd" },\
+    { import = "lazyvim.plugins.extras.lang.cmake" },\
+    { import = "lazyvim.plugins.extras.lang.markdown" },\
+    { import = "lazyvim.plugins.extras.dap.core" },\
+    { import = "lazyvim.plugins.extras.coding.mini-surround" },\
+    { import = "lazyvim.plugins.extras.coding.yanky" },\
+    { import = "lazyvim.plugins.extras.editor.inc-rename" },\
+    { import = "lazyvim.plugins.extras.ui.treesitter-context" },' "$lazy_file"
 
     log_success "Lazy Extras 插件配置完成"
 }

@@ -380,11 +380,12 @@ check_extras_config() {
 
     local plugins_dir="$HOME/.config/nvim/lua/plugins"
 
-    # Extras 配置
-    if [[ -f "$plugins_dir/extras.lua" ]]; then
-        print_success "Lazy Extras 配置: extras.lua"
+    # Extras 配置（现在写入 lazy.lua 的 spec 中，而非单独文件）
+    local lazy_file="$HOME/.config/nvim/lua/config/lazy.lua"
+    if grep -q "lazyvim.plugins.extras" "$lazy_file" 2>/dev/null; then
+        print_success "Lazy Extras 配置: 已写入 lazy.lua"
     else
-        print_warning "Lazy Extras 配置缺失: extras.lua"
+        print_warning "Lazy Extras 配置缺失: lazy.lua 中未找到 extras import"
     fi
 
     # OSC52 剪贴板
