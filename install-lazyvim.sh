@@ -478,6 +478,7 @@ return {
   {
     "iamcco/markdown-preview.nvim",
     optional = true,
+    build = "cd app && npx --yes yarn install",
     init = function()
       vim.g.mkdp_open_to_the_world = 1
       vim.g.mkdp_open_ip = "${server_ip}"
