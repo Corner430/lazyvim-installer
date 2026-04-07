@@ -506,11 +506,17 @@ LUAEOF
 install_plugins() {
     log_info "正在安装插件 (这可能需要几分钟)..."
 
-    nvim --headless -c "Lazy! sync" -c "qa" 2>&1 || true
+    # 等待 Lazy sync 完成后再退出，避免 Mason 等后台安装被中断
+    nvim --headless \
+        -c "lua require('lazy').sync({wait=true})" \
+        -c "qa" 2>&1 || true
 
-    # 安装 Mason 工具
+    # 安装 Mason 工具（单独启动，等待足够时间让安装完成）
     log_info "正在安装 Mason 工具..."
-    nvim --headless +"lua require('mason-registry').refresh()" +"MasonInstall marksman" +"sleep 30" +qa 2>&1 || true
+    nvim --headless \
+        +"lua require('mason-registry').refresh()" \
+        +"MasonInstall marksman" \
+        +"lua vim.defer_fn(function() vim.cmd('qa') end, 60000)" 2>&1 || true
 
     log_success "插件安装完成"
 }

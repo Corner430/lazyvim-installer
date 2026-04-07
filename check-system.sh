@@ -317,7 +317,7 @@ check_terminal() {
             echo "  建议安装: iTerm2, Kitty, WezTerm 或 Alacritty"
         fi
     else
-        local terminals=("kitty" "wezterm" "alacritty" "gnome-terminal" "konsole" "xterm")
+        local terminals=("kitty" "wezterm" "alacritty" "gnome-terminal" "konsole" "xterm" "tmux" "screen")
 
         for terminal in "${terminals[@]}"; do
             if command_exists "$terminal"; then
@@ -352,11 +352,11 @@ check_lazyvim_config() {
     if [[ -d "$config_dir" ]]; then
         print_success "LazyVim 配置目录存在: $config_dir"
 
-        # 检查关键文件
+        # 检查关键文件（基于 LazyVim starter 模板实际结构）
         local files=(
             "init.lua"
-            "lua/config/init.lua"
-            "lua/plugins/init.lua"
+            "lua/config/lazy.lua"
+            "lua/config/options.lua"
         )
 
         for file in "${files[@]}"; do
