@@ -151,9 +151,11 @@ nvim --headless -c "Lazy! sync" -c "qa"
 
 安装脚本会自动创建以下配置文件：
 
-### Lazy Extras 插件 (`~/.config/nvim/lua/plugins/extras.lua`)
+### Lazy Extras 插件 (`~/.config/nvim/lazyvim.json`)
 
-预装 C/C++、CMake、Markdown 语言支持，DAP 调试，以及 mini-surround、yanky、inc-rename、treesitter-context 等增强插件。
+通过 `lazyvim.json` 预装 Lazy Extras，与在 LazyVim 中执行 `:LazyExtras` 后按 `x` 启用效果完全一致。安装后可随时通过 `:LazyExtras` 界面自由启用/禁用。
+
+预装的 extras 包括 C/C++、CMake、Python、Go、Java、TypeScript、Tailwind CSS、JSON、Markdown 语言支持，DAP 调试，以及 mini-surround、yanky、inc-rename、treesitter-context 等增强插件。
 
 ### OSC52 剪贴板（SSH 环境，`~/.config/nvim/lua/plugins/osc52.lua`）
 
@@ -166,9 +168,9 @@ nvim --headless -c "Lazy! sync" -c "qa"
 set -g set-clipboard on
 ```
 
-### Markdown LSP (`~/.config/nvim/lua/plugins/markdown-lsp.lua`)
+### Markdown 配置 (`~/.config/nvim/lua/plugins/markdown.lua`)
 
-自动配置 marksman LSP，在 Markdown 文件中提供符号导航（`<leader>cs` 显示标题列表）。
+自动配置 marksman LSP + 远程预览 + lint 修复，在 Markdown 文件中提供符号导航（`<leader>cs` 显示标题列表）。
 
 需要系统安装 `libicu`（安装脚本会自动处理）。
 
@@ -186,5 +188,5 @@ chmod +x check-system.sh
 - fzf、ripgrep、fd、lazygit 等可选工具
 - Nerd Font 安装状态
 - LazyVim 配置完整性
-- 预装插件配置（extras、OSC52、markdown-lsp）
+- 预装插件配置（lazyvim.json extras、OSC52、markdown）
 - 网络连接

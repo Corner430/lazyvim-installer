@@ -3,7 +3,7 @@
 # LazyVim 系统检查脚本
 # 用于验证所有依赖是否正确安装
 # 支持 Linux 和 macOS 系统
-# 版本: 3.0.0
+# 版本: 3.1.0
 
 set -e
 
@@ -419,12 +419,13 @@ check_extras_config() {
 
     local plugins_dir="$HOME/.config/nvim/lua/plugins"
 
-    # Extras 配置（现在写入 lazy.lua 的 spec 中，而非单独文件）
-    local lazy_file="$HOME/.config/nvim/lua/config/lazy.lua"
-    if grep -q "lazyvim.plugins.extras" "$lazy_file" 2>/dev/null; then
-        print_success "Lazy Extras 配置: 已写入 lazy.lua"
+    # Extras 配置（通过 lazyvim.json 管理，与 :LazyExtras 中按 x 启用一致）
+    local json_file="$HOME/.config/nvim/lazyvim.json"
+    if [[ -f "$json_file" ]] && grep -q "lazyvim.plugins.extras" "$json_file" 2>/dev/null; then
+        local extras_count=$(grep -c "lazyvim.plugins.extras" "$json_file" 2>/dev/null || echo "0")
+        print_success "Lazy Extras 配置: lazyvim.json ($extras_count 个 extras 已启用)"
     else
-        print_warning "Lazy Extras 配置缺失: lazy.lua 中未找到 extras import"
+        print_warning "Lazy Extras 配置缺失: lazyvim.json 中未找到 extras"
     fi
 
     # OSC52 剪贴板
@@ -552,7 +553,7 @@ generate_report() {
 
 # 主函数
 main() {
-    echo "🔍 LazyVim 系统检查工具 v3.0.0"
+    echo "🔍 LazyVim 系统检查工具 v3.1.0"
     echo "================================="
     echo
 

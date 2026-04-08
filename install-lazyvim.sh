@@ -3,7 +3,7 @@
 # LazyVim 自动安装脚本
 # 支持 Linux 和 macOS 系统
 # 作者: Corner
-# 版本: 3.0.0
+# 版本: 3.1.0
 
 set -e  # 遇到错误立即退出
 
@@ -329,34 +329,36 @@ install_lazyvim() {
 }
 
 # 配置 Lazy Extras（预装推荐插件）
-# 注意：extras 必须在 lazy.lua 的 spec 中、位于 lazyvim.plugins 和用户 plugins 之间
-# 否则 LazyVim 会报加载顺序错误
+# 通过 lazyvim.json 管理，与 :LazyExtras 界面中按 x 启用效果完全一致
+# 安装后可随时通过 :LazyExtras 自由启用/禁用
 configure_extras() {
     log_info "正在配置 Lazy Extras 插件..."
 
-    local lazy_file="$HOME/.config/nvim/lua/config/lazy.lua"
+    local json_file="$HOME/.config/nvim/lazyvim.json"
 
-    # 在 { import = "plugins" } 之前插入 extras import
-    sed -i '/{ import = "plugins" }/i\
-    -- 预装的 Lazy Extras（由 lazyvim-installer 自动生成）\
-    -- 语言支持\
-    { import = "lazyvim.plugins.extras.lang.clangd" },\
-    { import = "lazyvim.plugins.extras.lang.cmake" },\
-    { import = "lazyvim.plugins.extras.lang.python" },\
-    { import = "lazyvim.plugins.extras.lang.go" },\
-    { import = "lazyvim.plugins.extras.lang.java" },\
-    { import = "lazyvim.plugins.extras.lang.typescript" },\
-    { import = "lazyvim.plugins.extras.lang.tailwind" },\
-    { import = "lazyvim.plugins.extras.lang.json" },\
-    { import = "lazyvim.plugins.extras.lang.markdown" },\
-    -- 调试\
-    { import = "lazyvim.plugins.extras.dap.core" },\
-    -- 编码增强\
-    { import = "lazyvim.plugins.extras.coding.mini-surround" },\
-    { import = "lazyvim.plugins.extras.coding.yanky" },\
-    -- 编辑器 / UI\
-    { import = "lazyvim.plugins.extras.editor.inc-rename" },\
-    { import = "lazyvim.plugins.extras.ui.treesitter-context" },' "$lazy_file"
+    cat > "$json_file" << 'EOF'
+{
+  "extras": [
+    "lazyvim.plugins.extras.coding.mini-surround",
+    "lazyvim.plugins.extras.coding.yanky",
+    "lazyvim.plugins.extras.dap.core",
+    "lazyvim.plugins.extras.editor.inc-rename",
+    "lazyvim.plugins.extras.lang.clangd",
+    "lazyvim.plugins.extras.lang.cmake",
+    "lazyvim.plugins.extras.lang.go",
+    "lazyvim.plugins.extras.lang.java",
+    "lazyvim.plugins.extras.lang.json",
+    "lazyvim.plugins.extras.lang.markdown",
+    "lazyvim.plugins.extras.lang.python",
+    "lazyvim.plugins.extras.lang.tailwind",
+    "lazyvim.plugins.extras.lang.typescript",
+    "lazyvim.plugins.extras.ui.treesitter-context"
+  ],
+  "install_version": 8,
+  "news": {},
+  "version": 8
+}
+EOF
 
     log_success "Lazy Extras 插件配置完成"
 }
@@ -547,6 +549,10 @@ show_completion_info() {
     fi
     echo "  - Markdown 预览: nvim 中 :MarkdownPreview，浏览器访问 http://$(hostname -I 2>/dev/null | awk '{print $1}'):8888"
     echo
+    echo "Extras 管理："
+    echo "  - 预装的 extras 通过 lazyvim.json 管理"
+    echo "  - 在 nvim 中执行 :LazyExtras 可随时启用/禁用任何 extra"
+    echo
     echo "下一步操作："
     echo "1. 重启终端或重新加载终端配置"
     echo "2. 运行 'nvim' 启动 LazyVim"
@@ -563,7 +569,7 @@ show_completion_info() {
 
 # 主函数
 main() {
-    echo "🚀 LazyVim 自动安装脚本 v3.0.0"
+    echo "🚀 LazyVim 自动安装脚本 v3.1.0"
     echo "================================="
     echo
 
