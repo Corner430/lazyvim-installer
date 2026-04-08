@@ -12,7 +12,7 @@
 一个专为 LazyVim 设计的完整安装解决方案，安装后即可直接开始编码：
 
 - **自动安装脚本** - 一键安装所有依赖和插件
-- **开箱即用** - 预装 C/C++、Markdown 语言支持和常用插件
+- **开箱即用** - 预装 C/C++、Python、Go、Java、TypeScript、Tailwind CSS、Markdown 语言支持和常用插件
 - **SSH 友好** - 自动检测 SSH 环境并配置剪贴板互通
 - **GLIBC 兼容** - 自动处理低版本 GLIBC 的 tree-sitter 兼容性问题
 - **系统检查工具** - 验证安装是否成功
@@ -40,8 +40,14 @@ chmod +x install-lazyvim.sh
 
 | 分类 | 插件 | 说明 |
 |------|------|------|
-| 语言 | `lang.clangd` | C/C++ 语言支持（补全、跳转、诊断） |
+| 语言 | `lang.clangd` | C/C++ 支持（clangd LSP + 补全、跳转、诊断） |
 | 语言 | `lang.cmake` | CMake 支持 |
+| 语言 | `lang.python` | Python 支持（pyright + ruff + debugpy） |
+| 语言 | `lang.go` | Go 支持（gopls + goimports + gofumpt + delve） |
+| 语言 | `lang.java` | Java 支持（jdtls + java-debug-adapter） |
+| 语言 | `lang.typescript` | TypeScript/JavaScript 支持（vtsls + js-debug-adapter） |
+| 语言 | `lang.tailwind` | Tailwind CSS IntelliSense（类名补全、颜色预览） |
+| 语言 | `lang.json` | JSON 支持（json-lsp） |
 | 语言 | `lang.markdown` | Markdown 支持 + marksman LSP + 远程预览 |
 | 调试 | `dap.core` | DAP 调试框架 |
 | 编码 | `coding.mini-surround` | 括号/引号包围操作 |
@@ -91,6 +97,16 @@ tree-sitter: /lib64/libc.so.6: version `GLIBC_2.39' not found
 | 终端 | 支持真彩色 |
 
 推荐工具（脚本会自动安装）：Nerd Font、ripgrep、fzf、fd、lazygit、C 编译器
+
+**语言运行时（按需安装）：**
+
+| 语言 | 要求 | 说明 |
+|------|------|------|
+| C/C++ | gcc 或 clang | 脚本自动安装 |
+| Python | python3 | pyright + ruff LSP |
+| Go | go >= 1.21 | gopls LSP |
+| Java | JDK >= 11 | jdtls LSP（首次打开 .java 时自动下载，约 300MB） |
+| TypeScript | Node.js >= 18 | vtsls LSP |
 
 ## 项目结构
 

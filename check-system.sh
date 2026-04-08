@@ -3,7 +3,7 @@
 # LazyVim 系统检查脚本
 # 用于验证所有依赖是否正确安装
 # 支持 Linux 和 macOS 系统
-# 版本: 2.0.0
+# 版本: 3.0.0
 
 set -e
 
@@ -233,6 +233,45 @@ check_optional_tools() {
     echo
 }
 
+# 检查语言运行时
+check_language_runtimes() {
+    echo "=== 语言运行时检查 ==="
+
+    # Python
+    if command_exists python3; then
+        local py_version=$(python3 --version 2>&1 | sed 's/Python //')
+        print_success "Python: $py_version"
+    else
+        print_warning "Python: 未安装（lang.python 需要）"
+    fi
+
+    # Go
+    if command_exists go; then
+        local go_version=$(go version 2>&1 | sed 's/go version go//' | sed 's/ .*//')
+        print_success "Go: $go_version"
+    else
+        print_warning "Go: 未安装（lang.go 需要）"
+    fi
+
+    # Java
+    if command_exists java; then
+        local java_version=$(java -version 2>&1 | head -n1 | sed 's/.*"\(.*\)".*/\1/')
+        print_success "Java: $java_version"
+    else
+        print_warning "Java: 未安装（lang.java 需要 JDK >= 11）"
+    fi
+
+    # Node.js
+    if command_exists node; then
+        local node_version=$(node --version 2>&1)
+        print_success "Node.js: $node_version"
+    else
+        print_warning "Node.js: 未安装（lang.typescript 需要）"
+    fi
+
+    echo
+}
+
 # 检查字体
 check_fonts() {
     echo "=== 字体检查 ==="
@@ -408,13 +447,30 @@ check_extras_config() {
         print_warning "Markdown 配置缺失: markdown.lua"
     fi
 
-    # marksman 安装状态
-    local marksman_bin="$HOME/.local/share/nvim/mason/bin/marksman"
-    if [[ -x "$marksman_bin" ]]; then
-        print_success "marksman LSP: 已安装"
-    else
-        print_warning "marksman LSP: 未安装 (在 nvim 中运行 :MasonInstall marksman)"
-    fi
+    # 检查各语言 LSP 安装状态
+    echo
+    echo "--- Mason LSP 安装状态 ---"
+    local mason_bin="$HOME/.local/share/nvim/mason/bin"
+    local lsp_checks=(
+        "marksman:Markdown LSP"
+        "basedpyright:Python LSP (basedpyright)"
+        "pyright:Python LSP (pyright)"
+        "ruff:Python Linter/Formatter"
+        "gopls:Go LSP"
+        "jdtls:Java LSP"
+        "vtsls:TypeScript LSP"
+        "tailwindcss-language-server:Tailwind CSS LSP"
+    )
+
+    for check in "${lsp_checks[@]}"; do
+        local bin_name="${check%%:*}"
+        local desc="${check##*:}"
+        if [[ -x "$mason_bin/$bin_name" ]]; then
+            print_success "$desc: 已安装"
+        else
+            print_info "$desc: 未安装（首次打开对应文件时自动安装）"
+        fi
+    done
 
     echo
 }
@@ -496,7 +552,7 @@ generate_report() {
 
 # 主函数
 main() {
-    echo "🔍 LazyVim 系统检查工具 v2.0.0"
+    echo "🔍 LazyVim 系统检查工具 v3.0.0"
     echo "================================="
     echo
 
@@ -504,6 +560,7 @@ main() {
     check_package_manager
     check_basic_deps
     check_optional_tools
+    check_language_runtimes
     check_fonts
     check_terminal
     check_lazyvim_config

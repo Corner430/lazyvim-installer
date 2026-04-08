@@ -3,7 +3,7 @@
 # LazyVim 自动安装脚本
 # 支持 Linux 和 macOS 系统
 # 作者: Corner
-# 版本: 2.0.0
+# 版本: 3.0.0
 
 set -e  # 遇到错误立即退出
 
@@ -339,12 +339,22 @@ configure_extras() {
     # 在 { import = "plugins" } 之前插入 extras import
     sed -i '/{ import = "plugins" }/i\
     -- 预装的 Lazy Extras（由 lazyvim-installer 自动生成）\
+    -- 语言支持\
     { import = "lazyvim.plugins.extras.lang.clangd" },\
     { import = "lazyvim.plugins.extras.lang.cmake" },\
+    { import = "lazyvim.plugins.extras.lang.python" },\
+    { import = "lazyvim.plugins.extras.lang.go" },\
+    { import = "lazyvim.plugins.extras.lang.java" },\
+    { import = "lazyvim.plugins.extras.lang.typescript" },\
+    { import = "lazyvim.plugins.extras.lang.tailwind" },\
+    { import = "lazyvim.plugins.extras.lang.json" },\
     { import = "lazyvim.plugins.extras.lang.markdown" },\
+    -- 调试\
     { import = "lazyvim.plugins.extras.dap.core" },\
+    -- 编码增强\
     { import = "lazyvim.plugins.extras.coding.mini-surround" },\
     { import = "lazyvim.plugins.extras.coding.yanky" },\
+    -- 编辑器 / UI\
     { import = "lazyvim.plugins.extras.editor.inc-rename" },\
     { import = "lazyvim.plugins.extras.ui.treesitter-context" },' "$lazy_file"
 
@@ -506,8 +516,10 @@ install_plugins() {
     log_info "正在安装 Mason 工具..."
     nvim --headless \
         +"lua require('mason-registry').refresh()" \
-        +"MasonInstall marksman" \
-        +"lua vim.defer_fn(function() vim.cmd('qa') end, 60000)" 2>&1 || true
+        +"MasonInstall marksman pyright ruff gopls goimports gofumpt vtsls" \
+        +"lua vim.defer_fn(function() vim.cmd('qa') end, 120000)" 2>&1 || true
+
+    log_info "jdtls 等大型 LSP 将在首次打开对应文件时自动安装"
 
     log_success "插件安装完成"
 }
@@ -517,9 +529,17 @@ show_completion_info() {
     echo
     log_success "🎉 LazyVim 安装完成！"
     echo
-    echo "已预装以下功能："
-    echo "  - C/C++ 支持 (clangd + CMake + DAP 调试)"
-    echo "  - Markdown 支持 (marksman LSP + 远程预览)"
+    echo "已预装以下语言支持："
+    echo "  - C/C++      clangd + CMake + DAP 调试"
+    echo "  - Python     pyright + ruff + debugpy"
+    echo "  - Go         gopls + goimports + gofumpt + delve"
+    echo "  - Java       jdtls + java-debug-adapter"
+    echo "  - TypeScript vtsls + js-debug-adapter"
+    echo "  - Tailwind   tailwindcss LSP"
+    echo "  - JSON       json-lsp"
+    echo "  - Markdown   marksman LSP + 远程预览"
+    echo
+    echo "编辑器增强："
     echo "  - 编码增强 (mini-surround, yanky, inc-rename)"
     echo "  - UI 增强 (treesitter-context)"
     if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
@@ -543,7 +563,7 @@ show_completion_info() {
 
 # 主函数
 main() {
-    echo "🚀 LazyVim 自动安装脚本 v2.0.0"
+    echo "🚀 LazyVim 自动安装脚本 v3.0.0"
     echo "================================="
     echo
 
