@@ -59,7 +59,7 @@ chmod +x install-lazyvim.sh
 
 在 SSH 环境下，安装脚本会自动配置 [OSC52](https://github.com/ojroques/nvim-osc52) 协议，使 `yy` 等复制操作可以同步到本地剪贴板。
 
-> **注意：** 安装器会将 `vim.opt.clipboard` 设为 `""`（空字符串），而非 `"unnamedplus"`。这是因为 SSH 环境下没有系统剪贴板 provider，设为 `unnamedplus` 会导致 OSC52 不生效。
+> **注意：** 安装器会将 `vim.opt.clipboard` 设为 `"unnamedplus"`，并通过 `TextYankPost` autocmd 调用 OSC52 将复制内容同步到本地终端剪贴板。
 
 **需要你的本地终端支持 OSC52：**
 - iTerm2、WezTerm、Alacritty、Windows Terminal、kitty
