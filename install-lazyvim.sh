@@ -3,7 +3,7 @@
 # LazyVim 自动安装脚本
 # 支持 Linux 和 macOS 系统
 # 作者: Corner
-# 版本: 3.1.0
+# 版本: 3.2.0
 
 set -e  # 遇到错误立即退出
 
@@ -364,84 +364,50 @@ EOF
 }
 
 # 配置 OSC52 剪贴板（SSH/tmux 环境）
+# 使用 Neovim 0.10+ 内置 OSC52 支持，无需第三方插件
+# LazyVim 默认已设 clipboard = "unnamedplus"，无需重复设置
 configure_clipboard() {
     if [[ -z "$SSH_CLIENT" && -z "$SSH_TTY" ]]; then
         log_info "非 SSH 环境，跳过 OSC52 剪贴板配置"
         return 0
     fi
 
-    log_info "检测到 SSH 环境，正在配置 OSC52 剪贴板..."
+    log_info "检测到 SSH 环境，正在配置 Neovim 内置 OSC52 剪贴板..."
 
     mkdir -p ~/.config/nvim/lua/plugins
 
     cat > ~/.config/nvim/lua/plugins/osc52.lua << 'LUAEOF'
+-- SSH 环境下使用 Neovim 内置 OSC52 剪贴板 provider
+-- Neovim 0.10+ 原生支持，无需第三方插件
+-- 配合 LazyVim 默认的 clipboard = "unnamedplus"，yy 即可同步到本地终端
 return {
   {
-    "ojroques/nvim-osc52",
-    config = function()
-      local osc52 = require("osc52")
-      osc52.setup({
-        max_length = 0,
-        silent = true,
-        trim = false,
-      })
-
-      -- 自定义 OSC52 发送：通过 tmux client tty 直接写入
-      -- nvim 的 stderr 在 tmux 中不连接终端 pty，需要绕过
-      local function send_osc52(text)
-        local b64 = require("osc52.base64").enc(text)
-        local seq = string.format("\027]52;c;%s\007", b64)
-
-        if os.getenv("TMUX") then
-          local handle = io.popen("tmux list-clients -F '#{client_tty}' 2>/dev/null")
-          if handle then
-            local ttys = handle:read("*a")
-            handle:close()
-            for tty in ttys:gmatch("[^\n]+") do
-              local f = io.open(tty, "w")
-              if f then
-                f:write(seq)
-                f:close()
-                return
-              end
-            end
-          end
-        end
-
-        -- fallback: 非 tmux 环境使用插件默认方式
-        osc52.copy(text)
-      end
-
-      vim.api.nvim_create_autocmd("TextYankPost", {
-        callback = function()
-          if vim.v.event.operator == "y" then
-            local reg = vim.v.event.regname
-            local text = vim.fn.getreg(reg)
-            if text and #text > 0 then
-              send_osc52(text)
-            end
-          end
-        end,
-      })
+    "LazyVim/LazyVim",
+    opts = function()
+      vim.g.clipboard = {
+        name = "OSC 52",
+        copy = {
+          ["+"] = require("vim.ui.clipboard.osc52").copy("+"),
+          ["*"] = require("vim.ui.clipboard.osc52").copy("*"),
+        },
+        paste = {
+          ["+"] = require("vim.ui.clipboard.osc52").paste("+"),
+          ["*"] = require("vim.ui.clipboard.osc52").paste("*"),
+        },
+      }
     end,
   },
 }
 LUAEOF
 
-    # 启用系统剪贴板集成
-    local options_file="$HOME/.config/nvim/lua/config/options.lua"
-    if ! grep -q "vim.opt.clipboard" "$options_file" 2>/dev/null; then
-        echo "" >> "$options_file"
-        echo '-- 系统剪贴板集成（OSC52 通过 TextYankPost 同步到终端剪贴板）' >> "$options_file"
-        echo 'vim.opt.clipboard = "unnamedplus"' >> "$options_file"
-    fi
-
-    log_success "OSC52 剪贴板配置完成"
+    log_success "Neovim 内置 OSC52 剪贴板配置完成"
 }
 
-# 配置 Markdown（LSP + 预览 + lint 修复）
+# 配置 Markdown 远程预览（SSH 环境）
+# marksman LSP、lint、format 等已由 lang.markdown extra 提供
+# 这里只配置远程预览的 IP 和端口（extra 没有的部分）
 configure_markdown() {
-    log_info "正在配置 Markdown 支持..."
+    log_info "正在配置 Markdown 远程预览..."
 
     mkdir -p ~/.config/nvim/lua/plugins
 
@@ -454,43 +420,11 @@ configure_markdown() {
 
     cat > ~/.config/nvim/lua/plugins/markdown.lua << LUAEOF
 return {
-  -- marksman LSP
-  {
-    "neovim/nvim-lspconfig",
-    opts = function(_, opts)
-      opts.servers = opts.servers or {}
-      opts.servers.marksman = {
-        mason = true,
-        filetypes = { "markdown", "markdown.mdx" },
-      }
-      return opts
-    end,
-  },
-  -- 禁用 markdownlint-cli2（避免 ENOENT 报错）
-  {
-    "mfussenegger/nvim-lint",
-    optional = true,
-    opts = {
-      linters_by_ft = {
-        markdown = {},
-      },
-    },
-  },
-  {
-    "stevearc/conform.nvim",
-    optional = true,
-    opts = {
-      formatters_by_ft = {
-        ["markdown"] = { "prettier" },
-        ["markdown.mdx"] = { "prettier" },
-      },
-    },
-  },
   -- Markdown 远程预览（SSH 环境通过 IP:端口 在本地浏览器访问）
+  -- marksman LSP、lint、format 等已由 lang.markdown extra 提供
   {
     "iamcco/markdown-preview.nvim",
     optional = true,
-    build = "cd app && npx --yes yarn install",
     init = function()
       vim.g.mkdp_open_to_the_world = 1
       vim.g.mkdp_open_ip = "${server_ip}"
@@ -502,26 +436,20 @@ return {
 }
 LUAEOF
 
-    log_success "Markdown 支持配置完成（LSP + 预览 + lint 修复）"
+    log_success "Markdown 远程预览配置完成"
 }
 
 # 安装插件
 install_plugins() {
     log_info "正在安装插件 (这可能需要几分钟)..."
 
-    # 等待 Lazy sync 完成后再退出，避免 Mason 等后台安装被中断
+    # 等待 Lazy sync 完成后再退出
     nvim --headless \
         -c "lua require('lazy').sync({wait=true})" \
         -c "qa" 2>&1 || true
 
-    # 安装 Mason 工具（单独启动，等待足够时间让安装完成）
-    log_info "正在安装 Mason 工具..."
-    nvim --headless \
-        +"lua require('mason-registry').refresh()" \
-        +"MasonInstall marksman pyright ruff gopls goimports gofumpt vtsls" \
-        +"lua vim.defer_fn(function() vim.cmd('qa') end, 120000)" 2>&1 || true
-
-    log_info "jdtls 等大型 LSP 将在首次打开对应文件时自动安装"
+    # Mason 工具（LSP、formatter、linter）会在首次打开对应文件类型时自动安装
+    log_info "Mason 工具将在首次打开对应文件类型时自动安装"
 
     log_success "插件安装完成"
 }
@@ -545,7 +473,7 @@ show_completion_info() {
     echo "  - 编码增强 (mini-surround, yanky, inc-rename)"
     echo "  - UI 增强 (treesitter-context)"
     if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
-        echo "  - SSH 剪贴板互通 (OSC52)"
+        echo "  - SSH 剪贴板互通 (Neovim 内置 OSC52)"
     fi
     echo "  - Markdown 预览: nvim 中 :MarkdownPreview，浏览器访问 http://$(hostname -I 2>/dev/null | awk '{print $1}'):8888"
     echo
@@ -569,7 +497,7 @@ show_completion_info() {
 
 # 主函数
 main() {
-    echo "🚀 LazyVim 自动安装脚本 v3.1.0"
+    echo "🚀 LazyVim 自动安装脚本 v3.2.0"
     echo "================================="
     echo
 

@@ -159,20 +159,23 @@ nvim --headless -c "Lazy! sync" -c "qa"
 
 ### OSC52 剪贴板（SSH 环境，`~/.config/nvim/lua/plugins/osc52.lua`）
 
-在 SSH 环境下自动配置，使 `yy` 等复制操作通过 OSC52 协议同步到本地剪贴板。
+在 SSH 环境下自动配置 Neovim 内置的 OSC52 剪贴板 provider（Neovim 0.10+ 原生支持，无需第三方插件），使 `yy` 等复制操作通过 OSC52 协议同步到本地剪贴板。
+
+LazyVim 默认已设 `clipboard = "unnamedplus"`，无需额外配置。
 
 **本地终端需要支持 OSC52：** iTerm2、WezTerm、Alacritty、Windows Terminal、kitty 均支持。
 
 如果使用 tmux，需在 `~/.tmux.conf` 添加：
 ```bash
+# tmux 3.3+
+set -g allow-passthrough on
+# 或者（旧版 tmux）
 set -g set-clipboard on
 ```
 
-### Markdown 配置 (`~/.config/nvim/lua/plugins/markdown.lua`)
+### Markdown 远程预览 (`~/.config/nvim/lua/plugins/markdown.lua`)
 
-自动配置 marksman LSP + 远程预览 + lint 修复，在 Markdown 文件中提供符号导航（`<leader>cs` 显示标题列表）。
-
-需要系统安装 `libicu`（安装脚本会自动处理）。
+marksman LSP、lint、format 等已由 `lang.markdown` extra 提供。此文件只配置远程预览的 IP 和端口，使 SSH 环境下可通过本地浏览器访问 `http://<服务器IP>:8888` 预览 Markdown。
 
 ## 系统检查
 
@@ -188,5 +191,5 @@ chmod +x check-system.sh
 - fzf、ripgrep、fd、lazygit 等可选工具
 - Nerd Font 安装状态
 - LazyVim 配置完整性
-- 预装插件配置（lazyvim.json extras、OSC52、markdown）
+- 预装插件配置（lazyvim.json extras、OSC52、Markdown 远程预览）
 - 网络连接

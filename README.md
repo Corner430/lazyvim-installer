@@ -57,14 +57,14 @@ chmod +x install-lazyvim.sh
 
 ## SSH 剪贴板互通
 
-在 SSH 环境下，安装脚本会自动配置 [OSC52](https://github.com/ojroques/nvim-osc52) 协议，使 `yy` 等复制操作可以同步到本地剪贴板。
+在 SSH 环境下，安装脚本会自动配置 Neovim 内置的 [OSC52](https://neovim.io/doc/user/provider.html#clipboard-osc52) 剪贴板 provider，使 `yy` 等复制操作可以同步到本地剪贴板。
 
-> **注意：** 安装器会将 `vim.opt.clipboard` 设为 `"unnamedplus"`，并通过 `TextYankPost` autocmd 调用 OSC52 将复制内容同步到本地终端剪贴板。
+> Neovim 0.10+ 原生支持 OSC52，无需第三方插件。LazyVim 默认已设 `clipboard = "unnamedplus"`，安装器只需配置 OSC52 作为剪贴板后端即可。
 
 **需要你的本地终端支持 OSC52：**
 - iTerm2、WezTerm、Alacritty、Windows Terminal、kitty
 - macOS Terminal.app **不支持**
-- tmux 需在 `~/.tmux.conf` 添加 `set -g set-clipboard on`
+- tmux 需在 `~/.tmux.conf` 添加 `set -g allow-passthrough on`（tmux 3.3+）或 `set -g set-clipboard on`
 
 ## Markdown 远程预览
 
@@ -135,4 +135,3 @@ MIT License - 详见 [LICENSE](LICENSE)。
 - [LazyVim](https://github.com/LazyVim/LazyVim)
 - [Neovim](https://neovim.io/)
 - [Nerd Fonts](https://www.nerdfonts.com/)
-- [nvim-osc52](https://github.com/ojroques/nvim-osc52)

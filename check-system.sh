@@ -3,7 +3,7 @@
 # LazyVim 系统检查脚本
 # 用于验证所有依赖是否正确安装
 # 支持 Linux 和 macOS 系统
-# 版本: 3.1.0
+# 版本: 3.2.0
 
 set -e
 
@@ -428,9 +428,9 @@ check_extras_config() {
         print_warning "Lazy Extras 配置缺失: lazyvim.json 中未找到 extras"
     fi
 
-    # OSC52 剪贴板
+    # OSC52 剪贴板（Neovim 内置）
     if [[ -f "$plugins_dir/osc52.lua" ]]; then
-        print_success "OSC52 剪贴板配置: osc52.lua"
+        print_success "OSC52 剪贴板配置: osc52.lua (Neovim 内置 OSC52)"
     else
         if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
             print_warning "SSH 环境未配置 OSC52 剪贴板: osc52.lua"
@@ -439,13 +439,13 @@ check_extras_config() {
         fi
     fi
 
-    # Markdown 配置（合并文件）
+    # Markdown 远程预览配置
     if [[ -f "$plugins_dir/markdown.lua" ]]; then
-        print_success "Markdown 配置: markdown.lua (LSP + 预览 + lint 修复)"
+        print_success "Markdown 远程预览配置: markdown.lua"
     elif [[ -f "$plugins_dir/markdown-lsp.lua" ]]; then
         print_success "Markdown LSP 配置: markdown-lsp.lua (旧版)"
     else
-        print_warning "Markdown 配置缺失: markdown.lua"
+        print_warning "Markdown 远程预览配置缺失: markdown.lua"
     fi
 
     # 检查各语言 LSP 安装状态
@@ -553,7 +553,7 @@ generate_report() {
 
 # 主函数
 main() {
-    echo "🔍 LazyVim 系统检查工具 v3.1.0"
+    echo "🔍 LazyVim 系统检查工具 v3.2.0"
     echo "================================="
     echo
 
